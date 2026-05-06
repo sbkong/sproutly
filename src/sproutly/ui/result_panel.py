@@ -1,18 +1,9 @@
-"""
-OCR 결과 표시/편집 패널
-
-- 좌측 "항목" 컬럼은 읽기 전용
-- 우측 "값" 컬럼은 편집 가능 (OCR 오인식 수동 수정용)
-- get_edited_record()로 수정값 반영된 dict 반환
-"""
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem,
     QHeaderView, QLabel,
 )
 
-# 표시할 항목 정의: (UI 라벨, record dict 키 경로, 타입)
-# 키 경로는 점(.) 표기로 nested 접근. 예: 'judgement.max_100'
 FIELDS = [
     ("Title", "title", "str"),
     ("Buttons", "buttons", "int"),
@@ -86,12 +77,10 @@ class ResultPanel(QWidget):
 
         self.table.setRowCount(len(FIELDS))
         for i, (label, key, kind) in enumerate(FIELDS):
-            # 항목명 (편집 불가)
             label_item = QTableWidgetItem(label)
             label_item.setFlags(label_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
             self.table.setItem(i, 0, label_item)
 
-            # 값
             if kind == 'sep':
                 val_item = QTableWidgetItem('─' * 20)
                 val_item.setFlags(val_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
@@ -115,7 +104,6 @@ class ResultPanel(QWidget):
         if self._record is None:
             return None
 
-        # 깊은 복사
         import copy
         result = copy.deepcopy(self._record)
 
@@ -133,7 +121,7 @@ class ResultPanel(QWidget):
                 except ValueError:
                     val = 0
                 _set_nested(result, key, val)
-            else:  # str
+            else:
                 _set_nested(result, key, text)
 
         return result

@@ -1,12 +1,3 @@
-"""
-SQLite 저장 모듈 (v2)
-
-변경점:
-- image_hash 컬럼 추가 (중복 저장 방지)
-- find_by_hash 추가
-- list_records에 검색/정렬 지원
-- 기존 DB 마이그레이션 자동 처리
-"""
 import hashlib
 import logging
 import shutil
@@ -158,7 +149,6 @@ def get_conn() -> sqlite3.Connection:
 
 
 def _migrate(conn: sqlite3.Connection):
-    """기존 DB에 image_hash 컬럼 없으면 추가"""
     cols = [row['name'] for row in conn.execute("PRAGMA table_info(records)").fetchall()]
     if 'image_hash' not in cols:
         conn.execute("ALTER TABLE records ADD COLUMN image_hash TEXT")
@@ -287,13 +277,11 @@ def delete_record(record_id: int):
 
 
 def get_overall_stats() -> dict:
-    """전체 통계"""
     with get_conn() as conn:
         total_plays = conn.execute("SELECT COUNT(*) FROM records").fetchone()[0]
         unique_songs = conn.execute("SELECT COUNT(DISTINCT title || '|' || buttons) FROM records").fetchone()[0]
         score_grown_count = conn.execute("SELECT COUNT(*) FROM records WHERE is_score_grown = 1").fetchone()[0]
 
-        # 평균 정확도 (accuracy는 "99.98%" 문자열이라 파싱)
         rows = conn.execute("SELECT accuracy FROM records WHERE accuracy IS NOT NULL AND accuracy != ''").fetchall()
         accs = []
         for r in rows:
@@ -313,7 +301,6 @@ def get_overall_stats() -> dict:
 
 
 def get_per_song_stats() -> list[dict]:
-    """곡(title + buttons)별 통계"""
     sql = """
           SELECT title,
                  buttons,
@@ -331,7 +318,6 @@ def get_per_song_stats() -> list[dict]:
 
 
 def get_song_history(title: str, buttons: int) -> list[dict]:
-    """특정 곡의 시간순 점수 추이"""
     sql = """
           SELECT created_at, score, accuracy
           FROM records

@@ -19,7 +19,8 @@ from sproutly.ui.history_window import HistoryWindow
 from sproutly.ui.result_panel import ResultPanel
 from sproutly.ui.settings_dialog import SettingsDialog
 from sproutly.ui.stats_window import StatsWindow
-from sproutly.workers import OcrWorker
+from sproutly.ui.update_dialog import UpdateDialog
+from sproutly.workers import OcrWorker, UpdateCheckWorker
 
 
 class MainWindow(QMainWindow):
@@ -51,6 +52,10 @@ class MainWindow(QMainWindow):
         self.hotkey = HotkeyManager(self.cfg['hotkey'])
         self.hotkey.triggered.connect(self.on_hotkey_capture)
         self.hotkey.start()
+
+        self.update_worker: UpdateCheckWorker | None = None
+        if self.cfg.get('update_check', True):
+            self._start_update_check(silent=True)
 
     def _build_ui(self):
         splitter = QSplitter(Qt.Orientation.Horizontal)
@@ -122,6 +127,16 @@ class MainWindow(QMainWindow):
         settings_action.setShortcut("Ctrl+,")
         settings_action.triggered.connect(self.open_settings)
         file_menu.addAction(settings_action)
+
+        help_menu = menubar.addMenu("도움말")
+
+        check_update_action = QAction("업데이트 확인...", self)
+        check_update_action.triggered.connect(lambda: self._start_update_check(silent=False))
+        help_menu.addAction(check_update_action)
+
+        about_action = QAction("정보", self)
+        about_action.triggered.connect(self._show_about)
+        help_menu.addAction(about_action)
 
     def _setup_shortcuts(self):
         paste = QShortcut(QKeySequence.StandardKey.Paste, self)
@@ -272,3 +287,48 @@ class MainWindow(QMainWindow):
             new_cfg['ocr_score_thresh'],
             new_cfg['red_arrow_ratio'],
         )
+
+    def _start_update_check(self, silent: bool):
+        """
+        silent=True: 자동 체크 (시작 시) - 업데이트 있을 때만 알림
+        silent=False: 수동 체크 (메뉴) - 결과 무조건 알림
+        """
+        if self.update_worker and self.update_worker.isRunning():
+            return  # 이미 진행 중
+
+        self._update_silent = silent
+        self.update_worker = UpdateCheckWorker()
+        self.update_worker.finished_with_info.connect(self._on_update_check_done)
+        self.update_worker.start()
+
+    def _on_update_check_done(self, info):
+        if info is None:
+            if not self._update_silent:
+                QMessageBox.warning(self, "업데이트 확인 실패",
+                                    "업데이트 정보를 가져올 수 없습니다.\n인터넷 연결을 확인하세요.")
+            return
+
+        if not info.is_update_available:
+            if not self._update_silent:
+                QMessageBox.information(self, "최신 버전",
+                                        f"현재 최신 버전입니다 (v{info.current}).")
+            return
+
+        skipped = self.cfg.get('skipped_update_version', '')
+        if self._update_silent and skipped == info.latest:
+            return
+
+        dlg = UpdateDialog(info, self)
+        dlg.exec()
+        if dlg.should_skip_version():
+            self.cfg['skipped_update_version'] = info.latest
+            config.save(self.cfg)
+
+    def _show_about(self):
+        from sproutly import __version__
+        QMessageBox.about(self, "Sproutly 정보",
+                          f"<h3>Sproutly</h3>"
+                          f"<p>버전 v{__version__}</p>"
+                          f"<p>성과 기록 도구</p>"
+                          f"<p><a href='https://github.com/sbkong/sproutly'>GitHub</a></p>"
+                          )

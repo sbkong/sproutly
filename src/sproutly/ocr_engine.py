@@ -1,6 +1,3 @@
-"""
-OCR 엔진: 이미지 경로 → 구조화된 record dict
-"""
 import os
 
 os.environ['FLAGS_use_mkldnn'] = '0'
@@ -69,8 +66,6 @@ def parse_judgement(texts: list[str]) -> dict:
 
 
 class OcrEngine:
-    """PaddleOCR 인스턴스 1회 생성 후 재사용"""
-
     def __init__(self, score_thresh: float = 0.5, red_arrow_ratio: float = 0.005):
         self._ocr = None
         self.score_thresh = score_thresh
@@ -91,10 +86,6 @@ class OcrEngine:
             )
 
     def extract(self, image_path: str) -> dict:
-        """
-        이미지 파일 경로 → record dict
-        (저장은 호출자가 담당)
-        """
         self._ensure_loaded()
 
         img = Image.open(image_path)

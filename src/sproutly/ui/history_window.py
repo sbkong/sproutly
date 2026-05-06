@@ -31,7 +31,6 @@ class HistoryWindow(QWidget):
     def _build_ui(self):
         layout = QVBoxLayout(self)
 
-        # 상단 검색/정렬
         top = QHBoxLayout()
         top.addWidget(QLabel("검색:"))
         self.search_edit = QLineEdit()
@@ -51,7 +50,6 @@ class HistoryWindow(QWidget):
         top.addWidget(self.refresh_btn)
         layout.addLayout(top)
 
-        # 좌: 테이블, 우: 상세
         splitter = QSplitter(Qt.Orientation.Horizontal)
 
         self.table = QTableWidget(0, 6)
@@ -63,7 +61,6 @@ class HistoryWindow(QWidget):
         self.table.itemSelectionChanged.connect(self._on_select)
         splitter.addWidget(self.table)
 
-        # 우측 상세
         detail = QWidget()
         detail_layout = QVBoxLayout(detail)
         detail_layout.setContentsMargins(8, 0, 0, 0)
@@ -98,7 +95,6 @@ class HistoryWindow(QWidget):
         rows = db.list_records(limit=500, title_filter=title_filter, order_by=order_by)
 
         self.table.setRowCount(len(rows))
-        # 컬럼 폭 일부 명시
         widths = [60, 160, 280, 80, 100, 100]
         for i, w in enumerate(widths):
             self.table.setColumnWidth(i, w)
@@ -126,7 +122,6 @@ class HistoryWindow(QWidget):
         if not record:
             return
 
-        # 이미지
         if record['image_path'] and Path(record['image_path']).exists():
             pixmap = QPixmap(record['image_path'])
             scaled = pixmap.scaled(
@@ -138,7 +133,6 @@ class HistoryWindow(QWidget):
         else:
             self.image_label.setText("이미지 파일 없음")
 
-        # 상세 텍스트
         d = dict(record)
         lines = [
             f"ID:         {d['id']}",

@@ -23,7 +23,6 @@ _logger: logging.Logger | None = None
 
 
 def _cleanup_old_logs():
-    """LOG_RETENTION_DAYS보다 오래된 로그 삭제"""
     if not LOG_DIR.exists():
         return
     cutoff = datetime.now() - timedelta(days=LOG_RETENTION_DAYS)
@@ -37,7 +36,6 @@ def _cleanup_old_logs():
 
 
 def setup_logging(level: int = logging.INFO) -> logging.Logger:
-    """앱 시작 시 한 번 호출"""
     global _logger
     if _logger is not None:
         return _logger
@@ -52,7 +50,6 @@ def setup_logging(level: int = logging.INFO) -> logging.Logger:
     logger.setLevel(level)
     logger.propagate = False
 
-    # 중복 핸들러 방지
     if logger.handlers:
         return logger
 
@@ -61,7 +58,6 @@ def setup_logging(level: int = logging.INFO) -> logging.Logger:
         datefmt='%Y-%m-%d %H:%M:%S',
     )
 
-    # 파일 핸들러 (회전)
     fh = RotatingFileHandler(
         log_path, maxBytes=MAX_BYTES, backupCount=BACKUP_COUNT, encoding='utf-8',
     )
@@ -69,17 +65,14 @@ def setup_logging(level: int = logging.INFO) -> logging.Logger:
     fh.setLevel(level)
     logger.addHandler(fh)
 
-    # 콘솔 출력 (개발 환경 / SPROUTLY_DEBUG=1 시)
     if not getattr(sys, 'frozen', False) or os.environ.get('SPROUTLY_DEBUG') == '1':
         ch = logging.StreamHandler(sys.stdout)
         ch.setFormatter(fmt)
         ch.setLevel(level)
         logger.addHandler(ch)
 
-    # 미처리 예외 훅
     sys.excepthook = _excepthook
 
-    # Qt 메시지 핸들러 연결 (PySide6 import 후 실행)
     _install_qt_handler()
 
     _logger = logger
@@ -96,7 +89,6 @@ def get_logger() -> logging.Logger:
 
 
 def _excepthook(exc_type, exc_value, exc_tb):
-    """미처리 예외 → 로그 파일 + 메시지박스"""
     if issubclass(exc_type, KeyboardInterrupt):
         sys.__excepthook__(exc_type, exc_value, exc_tb)
         return
@@ -105,7 +97,6 @@ def _excepthook(exc_type, exc_value, exc_tb):
     log = get_logger()
     log.critical(f"미처리 예외:\n{msg}")
 
-    # GUI 메시지박스 (가능하면)
     try:
         from PySide6.QtWidgets import QMessageBox, QApplication
         if QApplication.instance():
@@ -121,7 +112,6 @@ def _excepthook(exc_type, exc_value, exc_tb):
 
 
 def _install_qt_handler():
-    """Qt 내부 경고/에러도 로그로"""
     try:
         from PySide6.QtCore import QtMsgType, qInstallMessageHandler
     except ImportError:

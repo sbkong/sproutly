@@ -1,20 +1,14 @@
-"""
-설정 다이얼로그
-"""
 from PySide6.QtGui import QKeySequence
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QFormLayout, QLabel,
     QComboBox, QCheckBox, QDoubleSpinBox, QKeySequenceEdit, QGroupBox, QDialogButtonBox, QMessageBox,
 )
 
+from sproutly import config
 from sproutly.screen_capture import list_monitors
 
 
 def qkey_to_keyboard_str(seq: QKeySequence) -> str:
-    """
-    QKeySequence → keyboard 라이브러리 문자열
-    예: 'Ctrl+Shift+R' → 'ctrl+shift+r'
-    """
     s = seq.toString(QKeySequence.SequenceFormat.PortableText)
     return s.lower().replace(' ', '')
 
@@ -32,7 +26,6 @@ class SettingsDialog(QDialog):
     def _build_ui(self):
         root = QVBoxLayout(self)
 
-        # === 단축키 ===
         hotkey_group = QGroupBox("전역 단축키")
         hotkey_form = QFormLayout(hotkey_group)
 
@@ -46,7 +39,6 @@ class SettingsDialog(QDialog):
 
         root.addWidget(hotkey_group)
 
-        # === 캡처 ===
         capture_group = QGroupBox("캡처")
         capture_form = QFormLayout(capture_group)
 
@@ -62,8 +54,15 @@ class SettingsDialog(QDialog):
 
         root.addWidget(capture_group)
 
-        # === OCR ===
-        ocr_group = QGroupBox("OCR (고급)")
+        update_group = QGroupBox("업데이트")
+        update_form = QFormLayout(update_group)
+
+        self.update_check_check = QCheckBox("앱 시작 시 자동으로 업데이트 확인")
+        update_form.addRow("", self.update_check_check)
+
+        root.addWidget(update_group)
+
+        ocr_group = QGroupBox("OCR")
         ocr_form = QFormLayout(ocr_group)
 
         self.score_thresh_spin = QDoubleSpinBox()
@@ -84,7 +83,6 @@ class SettingsDialog(QDialog):
 
         root.addWidget(ocr_group)
 
-        # === 버튼 ===
         btn_box = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok
             | QDialogButtonBox.StandardButton.Cancel
@@ -98,18 +96,16 @@ class SettingsDialog(QDialog):
         root.addWidget(btn_box)
 
     def _load_to_ui(self):
-        # 단축키
         self.hotkey_edit.setKeySequence(QKeySequence(self.cfg['hotkey']))
 
-        # 캡처 대상
         target = self.cfg.get('capture_target', 'cursor')
         idx = self.target_combo.findData(target)
         self.target_combo.setCurrentIndex(idx if idx >= 0 else 0)
 
-        # 자동 저장
         self.auto_save_check.setChecked(bool(self.cfg.get('auto_save', False)))
 
-        # OCR
+        self.update_check_check.setChecked(bool(self.cfg.get('update_check', True)))
+
         self.score_thresh_spin.setValue(float(self.cfg.get('ocr_score_thresh', 0.5)))
         self.red_ratio_spin.setValue(float(self.cfg.get('red_arrow_ratio', 0.005)))
 
@@ -118,20 +114,20 @@ class SettingsDialog(QDialog):
         self._load_to_ui()
 
     def _accept(self):
-        # 단축키 검증
         seq = self.hotkey_edit.keySequence()
         if seq.isEmpty():
             QMessageBox.warning(self, "단축키 오류", "단축키를 입력하세요.")
             return
-        hotkey_str = qkey_to_keyboard_str(seq)
 
-        new_cfg = {
-            'hotkey': hotkey_str,
+        new_cfg = dict(self.cfg)
+        new_cfg.update({
+            'hotkey': qkey_to_keyboard_str(seq),
             'capture_target': self.target_combo.currentData(),
             'auto_save': self.auto_save_check.isChecked(),
             'ocr_score_thresh': self.score_thresh_spin.value(),
             'red_arrow_ratio': self.red_ratio_spin.value(),
-        }
+            'update_check': self.update_check_check.isChecked(),
+        })
 
         try:
             config.save(new_cfg)

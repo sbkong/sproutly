@@ -1,6 +1,3 @@
-"""
-설정 영구 저장 - config.json 기반
-"""
 import json
 from copy import deepcopy
 
@@ -12,6 +9,8 @@ DEFAULTS = {
     'auto_save': False,
     'ocr_score_thresh': 0.5,
     'red_arrow_ratio': 0.005,
+    'update_check': True,
+    'skipped_update_version': '',
 }
 
 
@@ -24,7 +23,6 @@ def load() -> dict:
     except Exception:
         return deepcopy(DEFAULTS)
 
-    # 누락된 키는 기본값으로 채움
     merged = deepcopy(DEFAULTS)
     merged.update(data)
     return merged

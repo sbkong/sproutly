@@ -1,9 +1,3 @@
-"""
-이미지 드롭 영역 위젯
-- 드래그&드롭
-- 클릭으로 파일 선택
-- 클립보드 붙여넣기 (Ctrl+V는 메인 윈도우에서 처리)
-"""
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QDragEnterEvent, QDropEvent, QPixmap
 from PySide6.QtWidgets import QLabel, QFileDialog
@@ -60,7 +54,6 @@ class DropArea(QLabel):
         self.clear()
         self._set_placeholder()
 
-    # === 드래그&드롭 ===
     def dragEnterEvent(self, event: QDragEnterEvent):
         if event.mimeData().hasUrls():
             event.acceptProposedAction()
@@ -73,7 +66,6 @@ class DropArea(QLabel):
         if path.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.webp')):
             self.image_selected.emit(path)
 
-    # === 클릭으로 파일 선택 ===
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
             path, _ = QFileDialog.getOpenFileName(

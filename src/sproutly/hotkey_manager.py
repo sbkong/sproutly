@@ -6,7 +6,7 @@ from PySide6.QtCore import QObject, Signal
 
 
 class HotkeyManager(QObject):
-    triggered = Signal()  # 단축키 눌림 (메인 스레드에서 받음)
+    triggered = Signal()
 
     def __init__(self, key_combo: str = 'ctrl+shift+r'):
         super().__init__()
@@ -16,8 +16,6 @@ class HotkeyManager(QObject):
     def start(self):
         if self._hotkey_id is not None:
             return
-        # 콜백은 keyboard 내부 스레드에서 호출됨
-        # → 시그널 emit으로 메인 스레드 큐에 들어가게
         self._hotkey_id = keyboard.add_hotkey(
             self.key_combo,
             lambda: self.triggered.emit(),

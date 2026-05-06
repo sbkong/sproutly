@@ -1,0 +1,61 @@
+name: Release Build
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          pip install paddlepaddle -i https://www.paddlepaddle.org.cn/packages/stable/cpu/
+          pip install -r requirements.txt
+          pip install -e .
+          pip install pyinstaller
+
+      - name: Build with PyInstaller
+        run: pyinstaller Sproutly.spec --noconfirm
+
+      - name: Get version
+        id: version
+        shell: bash
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Compress
+        shell: pwsh
+        run: |
+          Compress-Archive -Path dist\Sproutly -DestinationPath Sproutly-v${{ steps.version.outputs.VERSION }}-win64.zip
+
+      - name: Extract changelog section
+        id: changelog
+        shell: bash
+        run: |
+          if [ -f CHANGELOG.md ]; then
+            # 첫 ## 헤더부터 다음 ## 헤더 직전까지 추출
+            awk '/^## /{n++} n==1{print} n==2{exit}' CHANGELOG.md > release_notes.md
+          else
+            echo "v${{ steps.version.outputs.VERSION }}" > release_notes.md
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Sproutly-v*.zip
+          body_path: release_notes.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

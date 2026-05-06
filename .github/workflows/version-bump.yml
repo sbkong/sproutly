@@ -1,0 +1,217 @@
+name: Version Bump
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'CHANGELOG.md'
+      - '.github/**'
+
+permissions:
+  contents: write   # 태그/커밋 push 권한
+
+jobs:
+  bump:
+    # CI 자기 자신이 만든 커밋엔 반응 안 하게 가드
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # 모든 태그/이력 가져오기 (git describe 위해 필수)
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Determine version bump
+        id: bump
+        shell: bash
+        run: |
+          set -e
+
+          # 마지막 태그 (v0.1.0 같은)
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          echo "LAST_TAG=$LAST_TAG"
+
+          if [ -n "$LAST_TAG" ]; then
+            RANGE="$LAST_TAG..HEAD"
+          else
+            RANGE=""
+          fi
+          echo "RANGE=$RANGE"
+
+          # 커밋 메시지 분석
+          if [ -n "$RANGE" ]; then
+            LOG=$(git log --pretty=%B "$RANGE" 2>/dev/null || true)
+          else
+            LOG=$(git log --pretty=%B 2>/dev/null || true)
+          fi
+
+          # 표시 (디버그)
+          echo "--- COMMITS ---"
+          echo "$LOG"
+          echo "---------------"
+
+          # BREAKING CHANGE → MAJOR
+          BREAKING=$(echo "$LOG" | grep -ciE '^[[:space:]]*BREAKING[ _-]CHANGE|^[[:space:]]*#*[[:space:]]*[a-z]+!:|^[[:space:]]*[a-z]+\(.+\)!:' || true)
+
+          # feat / feature / add → MINOR
+          FEAT=$(echo "$LOG" | grep -ciE '^[[:space:]]*#*[[:space:]]*(feat|feature|add)([(:[:space:]]|$)' || true)
+
+          # fix / bug / hot / critical → PATCH
+          FIX=$(echo "$LOG" | grep -ciE '^[[:space:]]*#*[[:space:]]*(fix|bug|hot|critical)([(:[:space:]]|$)' || true)
+
+          echo "BREAKING=$BREAKING / FEAT=$FEAT / FIX=$FIX"
+
+          # 현재 버전
+          CUR_VERSION=$(grep -E '^__version__' src/sproutly/__init__.py | sed -E 's/.*"([0-9.]+)".*/\1/')
+          if [ -z "$CUR_VERSION" ]; then
+            echo "ERROR: __version__ not found"
+            exit 1
+          fi
+          echo "CUR_VERSION=$CUR_VERSION"
+
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CUR_VERSION"
+
+          if [ "$BREAKING" -gt 0 ]; then
+            MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0
+            BUMP_TYPE="major"
+          elif [ "$FEAT" -gt 0 ]; then
+            MINOR=$((MINOR + 1)); PATCH=0
+            BUMP_TYPE="minor"
+          elif [ "$FIX" -gt 0 ]; then
+            PATCH=$((PATCH + 1))
+            BUMP_TYPE="patch"
+          else
+            echo "No relevant commits, skip bump"
+            echo "bumped=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          echo "NEW_VERSION=$NEW_VERSION ($BUMP_TYPE)"
+
+          echo "bumped=true"           >> $GITHUB_OUTPUT
+          echo "cur_version=$CUR_VERSION" >> $GITHUB_OUTPUT
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "bump_type=$BUMP_TYPE"  >> $GITHUB_OUTPUT
+          echo "last_tag=$LAST_TAG"    >> $GITHUB_OUTPUT
+
+      - name: Update version files
+        if: steps.bump.outputs.bumped == 'true'
+        run: |
+          NEW="${{ steps.bump.outputs.new_version }}"
+          # __init__.py
+          sed -i -E "s/^__version__ = \".*\"/__version__ = \"$NEW\"/" src/sproutly/__init__.py
+          echo "--- src/sproutly/__init__.py ---"
+          cat src/sproutly/__init__.py
+
+      - name: Generate CHANGELOG
+        if: steps.bump.outputs.bumped == 'true'
+        shell: bash
+        run: |
+          set -e
+          NEW="${{ steps.bump.outputs.new_version }}"
+          LAST_TAG="${{ steps.bump.outputs.last_tag }}"
+          TODAY=$(date +"%Y-%m-%d")
+
+          # 키워드 그룹
+          declare -A group_items
+          group_items=([Breaking]="" [Feature]="" [Fix]="" [Refactor]="" [Docs]="" [Style]="" [Test]="" [Chore]="" [Perf]="" [Build]="" [CI]="" [Revert]="" [Etc]="")
+
+          header_order=(Breaking Feature Fix Refactor Docs Style Test Chore Perf Build CI Revert Etc)
+
+          # 키워드 → 그룹 매핑
+          map_keyword_to_group() {
+            local kw_lower="$1"
+            case "$kw_lower" in
+              feat|feature|add)              echo "Feature" ;;
+              fix|bug|hot|critical)          echo "Fix" ;;
+              refactor)                      echo "Refactor" ;;
+              docs|doc|document)             echo "Docs" ;;
+              style)                         echo "Style" ;;
+              test)                          echo "Test" ;;
+              chore)                         echo "Chore" ;;
+              perf|performance)              echo "Perf" ;;
+              build)                         echo "Build" ;;
+              ci)                            echo "CI" ;;
+              revert)                        echo "Revert" ;;
+              *)                             echo "Etc" ;;
+            esac
+          }
+
+          # 커밋 가져오기
+          if [ -n "$LAST_TAG" ]; then
+            COMMITS=$(git log "$LAST_TAG"..HEAD --pretty=format:'%H%x1f%s%x1f%an' --no-merges)
+          else
+            COMMITS=$(git log --pretty=format:'%H%x1f%s%x1f%an' --no-merges)
+          fi
+
+          while IFS=$'\x1f' read -r hash subject author; do
+            [ -z "$subject" ] && continue
+            # CI/봇 커밋 제외
+            if [[ "$author" == "github-actions[bot]" ]]; then continue; fi
+            if [[ "$subject" =~ \[skip[[:space:]]ci\] ]]; then continue; fi
+
+            # BREAKING CHANGE 감지 (subject에 ! 또는 BREAKING)
+            if [[ "$subject" =~ ^[a-z]+(\(.+\))?!: ]] || [[ "$subject" =~ ^BREAKING ]]; then
+              clean=$(echo "$subject" | sed -E 's/^[a-z]+(\([^)]*\))?!:[[:space:]]*//' | sed -E 's/^BREAKING[[:space:]]*CHANGE:[[:space:]]*//')
+              group_items[Breaking]+="- $clean"$'\n'
+              continue
+            fi
+
+            # 키워드 추출 (Conventional Commits: "feat: xxx", "fix(scope): xxx", "feat xxx")
+            kw=$(echo "$subject" | grep -oiE '^[[:space:]]*#?[[:space:]]*[a-z]+' | head -1 | tr -d '#' | xargs | tr '[:upper:]' '[:lower:]')
+            group=$(map_keyword_to_group "$kw")
+
+            # 메시지 본문 (키워드 제거)
+            clean=$(echo "$subject" | sed -E 's/^[[:space:]]*#?[[:space:]]*[a-zA-Z]+(\([^)]*\))?[:[:space:]]+//')
+            if [ -z "$clean" ]; then clean="$subject"; fi
+
+            group_items[$group]+="- $clean"$'\n'
+          done <<< "$COMMITS"
+
+          # CHANGELOG 본문 작성
+          CHANGELOG_BLOCK="## v$NEW - $TODAY"$'\n\n'
+
+          for header in "${header_order[@]}"; do
+            items="${group_items[$header]}"
+            if [ -n "$items" ]; then
+              CHANGELOG_BLOCK+="### $header"$'\n'
+              CHANGELOG_BLOCK+="$items"$'\n'
+            fi
+          done
+
+          # 기존 CHANGELOG 앞에 prepend
+          if [ -f CHANGELOG.md ]; then
+            { echo "$CHANGELOG_BLOCK"; cat CHANGELOG.md; } > CHANGELOG.tmp
+            mv CHANGELOG.tmp CHANGELOG.md
+          else
+            echo "$CHANGELOG_BLOCK" > CHANGELOG.md
+          fi
+
+          echo "--- CHANGELOG.md (head) ---"
+          head -50 CHANGELOG.md
+
+      - name: Commit & tag
+        if: steps.bump.outputs.bumped == 'true'
+        run: |
+          NEW="${{ steps.bump.outputs.new_version }}"
+          git add src/sproutly/__init__.py CHANGELOG.md
+          git commit -m "chore: bump version to v$NEW [skip ci]"
+          git tag "v$NEW"
+          git push origin main
+          git push origin "v$NEW"
+
+      - name: Summary
+        if: steps.bump.outputs.bumped == 'true'
+        run: |
+          echo "### 🚀 Released v${{ steps.bump.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Type: \`${{ steps.bump.outputs.bump_type }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Previous: \`v${{ steps.bump.outputs.cur_version }}\`" >> $GITHUB_STEP_SUMMARY

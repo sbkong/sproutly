@@ -8,7 +8,6 @@ from PySide6.QtWidgets import (
 
 
 def _make_stat_card(title: str, value: str) -> QWidget:
-    """전체 요약용 카드 위젯"""
     box = QFrame()
     box.setFrameShape(QFrame.Shape.StyledPanel)
     box.setStyleSheet("""
@@ -44,7 +43,6 @@ class StatsWindow(QWidget):
     def _build_ui(self):
         root = QVBoxLayout(self)
 
-        # 상단: 새로고침 버튼
         top_bar = QHBoxLayout()
         top_bar.addStretch(1)
         self.refresh_btn = QPushButton("새로고침")
@@ -52,15 +50,12 @@ class StatsWindow(QWidget):
         top_bar.addWidget(self.refresh_btn)
         root.addLayout(top_bar)
 
-        # 전체 요약 카드들
         self.summary_layout = QHBoxLayout()
         self.summary_layout.setSpacing(8)
         root.addLayout(self.summary_layout)
 
-        # 본문: 좌(테이블) / 우(그래프)
         splitter = QSplitter(Qt.Orientation.Horizontal)
 
-        # 좌측: 곡별 테이블
         self.song_table = QTableWidget(0, 5)
         self.song_table.setHorizontalHeaderLabels(
             ["곡명", "Buttons", "최고점", "평균점", "플레이"]
@@ -78,7 +73,6 @@ class StatsWindow(QWidget):
         self.song_table.itemSelectionChanged.connect(self._on_song_selected)
         splitter.addWidget(self.song_table)
 
-        # 우측: 그래프
         right_panel = QWidget()
         right_layout = QVBoxLayout(right_panel)
         right_layout.setContentsMargins(8, 0, 0, 0)
@@ -87,7 +81,6 @@ class StatsWindow(QWidget):
         self.graph_title.setStyleSheet("font-size: 14px; font-weight: bold; padding: 4px;")
         right_layout.addWidget(self.graph_title)
 
-        # PyQtGraph 위젯
         pg.setConfigOptions(antialias=True, background='#1a1a1a', foreground='#ddd')
         self.plot_widget = pg.PlotWidget()
         self.plot_widget.setLabel('left', 'Score')
@@ -100,8 +93,6 @@ class StatsWindow(QWidget):
         root.addWidget(splitter, 1)
 
     def refresh(self):
-        # 전체 요약
-        # 기존 카드 제거
         while self.summary_layout.count():
             item = self.summary_layout.takeAt(0)
             w = item.widget()
@@ -119,7 +110,6 @@ class StatsWindow(QWidget):
             self.summary_layout.addWidget(_make_stat_card(title, value))
         self.summary_layout.addStretch(1)
 
-        # 곡별 테이블
         songs = db.get_per_song_stats()
         self.song_table.setRowCount(len(songs))
         for i, song in enumerate(songs):
@@ -129,7 +119,6 @@ class StatsWindow(QWidget):
             self.song_table.setItem(i, 3, QTableWidgetItem(f"{int(song['avg_score']):,}"))
             self.song_table.setItem(i, 4, QTableWidgetItem(str(song['play_count'])))
 
-        # 그래프 초기화
         self.plot_widget.clear()
         self.graph_title.setText("곡을 선택하면 점수 추이가 표시됩니다")
 
@@ -154,7 +143,6 @@ class StatsWindow(QWidget):
         x = list(range(1, len(history) + 1))
         y = [h['score'] for h in history]
 
-        # 선 + 점
         pen = pg.mkPen(color='#4a9eff', width=2)
         self.plot_widget.plot(
             x, y,
@@ -165,7 +153,6 @@ class StatsWindow(QWidget):
             symbolPen=None,
         )
 
-        # 최고점 라인
         best = max(y)
         best_line = pg.InfiniteLine(
             pos=best,
@@ -176,7 +163,5 @@ class StatsWindow(QWidget):
         )
         self.plot_widget.addItem(best_line)
 
-        # X축 라벨을 날짜로 (호버 툴팁)
-        # 단순화: 그냥 인덱스로 표시. 호버 시 날짜 보여주려면 ScatterPlotItem 따로 처리 필요
         self.plot_widget.setLabel('bottom',
                                   f'Play # ({history[0]["created_at"][:10]} ~ {history[-1]["created_at"][:10]})')

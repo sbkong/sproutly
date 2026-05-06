@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sproutly"
-version = "0.1.0"
-description = "DJMAX RESPECT V 결과 자동 기록 도구"
+dynamic = ["version"]
+description = "성과 기록 도구"
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.11"
@@ -27,6 +27,9 @@ sproutly = "sproutly.app:main"
 
 [project.gui-scripts]
 sproutly-gui = "sproutly.app:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "sproutly.__version__" }
 
 [tool.setuptools.packages.find]
 where = ["src"]
