@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sproutly"
+version = "0.1.0"
+description = "DJMAX RESPECT V 결과 자동 기록 도구"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.11"
+authors = [{ name = "sbk" }]
+
+dependencies = [
+    "PySide6",
+    "Pillow",
+    "mss",
+    "numpy",
+    "keyboard",
+    "pyqtgraph",
+    "paddleocr",
+    # paddlepaddle은 PyPI에 없어서 별도 인덱스 필요. 직접 설치: pip install paddlepaddle -i https://www.paddlepaddle.org.cn/packages/stable/cpu/
+]
+
+[project.scripts]
+sproutly = "sproutly.app:main"
+
+[project.gui-scripts]
+sproutly-gui = "sproutly.app:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+sproutly = ["resources/*"]

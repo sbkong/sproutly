@@ -1,0 +1,11 @@
+# Python 3.11
+# paddlepaddle은 PyPI에 없으므로 아래 명령으로 별도 설치: pip install paddlepaddle==3.3.1 -i https://www.paddlepaddle.org.cn/packages/stable/cpu/
+
+paddlepaddle==3.3.1
+paddleocr==3.5.0
+PySide6==6.11.0
+pillow==12.2.0
+mss==10.2.0
+keyboard==0.13.5
+pyqtgraph==0.14.0
+pyinstaller==6.20.0

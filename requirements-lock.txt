@@ -1,0 +1,86 @@
+# Python 3.11
+#
+# paddlepaddle: pip install paddlepaddle==3.3.1 -i https://www.paddlepaddle.org.cn/packages/stable/cpu/
+#
+# etc : pip install -r requirements-lock.txt
+
+paddlepaddle==3.3.1
+paddleocr==3.5.0
+paddlex==3.5.1
+PySide6==6.11.0
+PySide6_Essentials==6.11.0
+PySide6_Addons==6.11.0
+shiboken6==6.11.0
+pillow==12.2.0
+mss==10.2.0
+keyboard==0.13.5
+pyqtgraph==0.14.0
+pyinstaller==6.20.0
+
+# paddlepaddle
+numpy==2.3.5
+protobuf==6.33.4
+opt-einsum==3.3.0
+networkx==3.6.1
+safetensors==0.7.0
+typing-extensions==4.15.0
+httpx==0.28.1
+httpcore==1.0.9
+h11==0.16.0
+anyio==4.12.1
+certifi==2026.1.4
+idna==3.11
+
+# paddleocr / paddlex
+aistudio-sdk==0.3.8
+modelscope==1.36.3
+huggingface-hub==1.13.0
+opencv-contrib-python==4.10.0.84
+pypdfium2==5.7.1
+shapely==2.1.2
+pyclipper==1.4.0
+python-bidi==0.6.7
+imagesize==2.0.0
+pandas==3.0.2
+pydantic==2.13.3
+pydantic-core==2.46.3
+annotated-types==0.7.0
+typing-inspection==0.4.2
+PyYAML==6.0.2
+ruamel.yaml==0.19.1
+ujson==5.12.0
+prettytable==3.17.0
+wcwidth==0.7.0
+chardet==7.4.3
+colorlog==6.10.1
+filelock==3.29.0
+py-cpuinfo==9.0.0
+fsspec==2026.4.0
+hf-xet==1.4.3
+
+requests==2.33.1
+urllib3==2.6.3
+charset-normalizer==3.4.7
+python-dateutil==2.9.0.post0
+six==1.17.0
+tzdata==2026.2
+packaging==26.2
+psutil==7.2.2
+tqdm==4.67.3
+click==8.3.3
+colorama==0.4.6
+
+# bce-sdk
+bce-python-sdk==0.9.71
+pycryptodome==3.23.0
+future==1.0.0
+crc32c==2.8
+
+# typer / rich (huggingface-hub cli)
+typer==0.25.1
+rich==15.0.0
+shellingham==1.5.4
+markdown-it-py==4.0.0
+mdurl==0.1.2
+pygments==2.20.0
+annotated-doc==0.0.4
