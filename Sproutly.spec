@@ -38,8 +38,8 @@ extra_hidden = [
 ]
 
 a = Analysis(
-    ['src/sproutly/__main__.py'],   # ← 진입점이 패키지 안의 __main__.py
-    pathex=['src'],                  # ← src 폴더를 import 경로에 추가
+    ['run_sproutly.py'],
+    pathex=['src'],
     binaries=paddle_binaries + paddleocr_binaries + paddlex_binaries + sproutly_binaries,
     datas=(
         paddle_datas + paddleocr_datas + paddlex_datas
