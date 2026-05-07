@@ -9,7 +9,7 @@ on:
       - '.github/**'
 
 permissions:
-  contents: write   # 태그/커밋 push 권한
+  contents: write
 
 jobs:
   bump:
