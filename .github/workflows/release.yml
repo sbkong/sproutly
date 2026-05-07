@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: ''
+        required: true
+        default: ''
 
 permissions:
   contents: write
@@ -13,6 +19,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -34,7 +42,14 @@ jobs:
       - name: Get version
         id: version
         shell: bash
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        run: |
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            VERSION="${{ github.event.inputs.tag }}"
+            VERSION="${VERSION#v}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Compress
         shell: pwsh
@@ -46,7 +61,6 @@ jobs:
         shell: bash
         run: |
           if [ -f CHANGELOG.md ]; then
-            # 첫 ## 헤더부터 다음 ## 헤더 직전까지 추출
             awk '/^## /{n++} n==1{print} n==2{exit}' CHANGELOG.md > release_notes.md
           else
             echo "v${{ steps.version.outputs.VERSION }}" > release_notes.md
@@ -57,5 +71,6 @@ jobs:
         with:
           files: Sproutly-v*.zip
           body_path: release_notes.md
+          tag_name: v${{ steps.version.outputs.VERSION }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
