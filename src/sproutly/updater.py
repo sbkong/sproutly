@@ -1,7 +1,7 @@
+import json
 import logging
 import re
 import urllib.request
-import json
 from dataclasses import dataclass
 from typing import Optional
 
