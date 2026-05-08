@@ -1,3 +1,9 @@
+## v0.2.1 - 2026-05-08
+
+### Fix
+- - add roi label show/hide
+
+
 ## v0.2.0 - 2026-05-08
 
 ### Feature
