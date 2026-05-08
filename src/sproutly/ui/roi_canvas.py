@@ -52,6 +52,12 @@ class RoiCanvas(QWidget):
 
         self._drag: Optional[_DragState] = None
 
+        self._show_labels = True
+
+    def set_show_labels(self, show: bool):
+        self._show_labels = show
+        self.update()
+
     def set_image(self, image_path: str):
         pm = QPixmap(image_path)
         if pm.isNull():
@@ -308,27 +314,28 @@ class RoiCanvas(QWidget):
             painter.setPen(pen)
             painter.drawRect(rect)
 
-            text = r.name
-            metrics = painter.fontMetrics()
-            tw = metrics.horizontalAdvance(text) + 6
-            th = metrics.height() + 2
+            if self._show_labels:
+                text = r.name
+                metrics = painter.fontMetrics()
+                tw = metrics.horizontalAdvance(text) + 6
+                th = metrics.height() + 2
 
-            if rect.width() < tw or rect.height() < th:
-                pass
-            else:
-                lx = int(rect.left()) + 1
-                ly = int(rect.top()) + 1
-
-                if is_sel:
-                    painter.fillRect(lx, ly, tw, th, color)
-                    painter.setPen(QColor(0, 0, 0))
+                if rect.width() < tw or rect.height() < th:
+                    pass
                 else:
-                    bg = QColor(color)
-                    bg.setAlpha(120)
-                    painter.fillRect(lx, ly, tw, th, bg)
-                    painter.setPen(QColor(255, 255, 255, 200))
+                    lx = int(rect.left()) + 1
+                    ly = int(rect.top()) + 1
 
-                painter.drawText(lx + 3, ly + metrics.ascent() + 1, text)
+                    if is_sel:
+                        painter.fillRect(lx, ly, tw, th, color)
+                        painter.setPen(QColor(0, 0, 0))
+                    else:
+                        bg = QColor(color)
+                        bg.setAlpha(120)
+                        painter.fillRect(lx, ly, tw, th, bg)
+                        painter.setPen(QColor(255, 255, 255, 200))
+
+                    painter.drawText(lx + 3, ly + metrics.ascent() + 1, text)
 
             if is_sel:
                 hs = HANDLE_HIT_SIZE / 2

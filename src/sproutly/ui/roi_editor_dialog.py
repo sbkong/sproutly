@@ -7,15 +7,14 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout, QLabel, QComboBox,
     QListWidget, QListWidgetItem, QSpinBox, QPushButton, QSplitter,
-    QWidget, QGroupBox, QMessageBox, QDialogButtonBox,
+    QWidget, QGroupBox, QMessageBox, QCheckBox,
 )
 
 from sproutly.rois import (
-    Roi, load_presets, get_active_state, load_active_rois,
-    save_custom_rois, set_active_preset, reset_to_default,
-)
-from sproutly.ui.roi_canvas import RoiCanvas
+    load_presets, get_active_state, load_active_rois,
+    save_custom_rois, set_active_preset, )
 from sproutly.ui.ocr_test_dialog import OcrTestResultDialog
+from sproutly.ui.roi_canvas import RoiCanvas
 
 log = logging.getLogger('sproutly.roi_editor')
 
@@ -57,6 +56,11 @@ class RoiEditorDialog(QDialog):
         self.canvas.roi_deleted.connect(self._on_roi_deleted)
         splitter.addWidget(self.canvas)
 
+        self.show_labels_check = QCheckBox("ROI 이름 표시")
+        self.show_labels_check.setChecked(True)
+        self.show_labels_check.toggled.connect(self.canvas.set_show_labels)
+        top.addWidget(self.show_labels_check)
+
         # 우측 패널
         right = QWidget()
         right_layout = QVBoxLayout(right)
@@ -71,10 +75,14 @@ class RoiEditorDialog(QDialog):
         # 좌표 입력
         coord_box = QGroupBox("선택된 박스 좌표")
         coord_form = QFormLayout(coord_box)
-        self.x1_spin = QSpinBox(); self.x1_spin.setRange(0, 10000)
-        self.y1_spin = QSpinBox(); self.y1_spin.setRange(0, 10000)
-        self.x2_spin = QSpinBox(); self.x2_spin.setRange(0, 10000)
-        self.y2_spin = QSpinBox(); self.y2_spin.setRange(0, 10000)
+        self.x1_spin = QSpinBox();
+        self.x1_spin.setRange(0, 10000)
+        self.y1_spin = QSpinBox();
+        self.y1_spin.setRange(0, 10000)
+        self.x2_spin = QSpinBox();
+        self.x2_spin.setRange(0, 10000)
+        self.y2_spin = QSpinBox();
+        self.y2_spin.setRange(0, 10000)
         for w in (self.x1_spin, self.y1_spin, self.x2_spin, self.y2_spin):
             w.setEnabled(False)
             w.editingFinished.connect(self._on_coord_edited)
