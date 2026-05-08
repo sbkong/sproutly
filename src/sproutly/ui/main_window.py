@@ -13,10 +13,12 @@ from sproutly import config
 from sproutly import db
 from sproutly.hotkey_manager import HotkeyManager
 from sproutly.ocr_engine import OcrEngine
+from sproutly.rois import load_active_rois
 from sproutly.screen_capture import capture_by_target
 from sproutly.ui.drop_area import DropArea
 from sproutly.ui.history_window import HistoryWindow
 from sproutly.ui.result_panel import ResultPanel
+from sproutly.ui.roi_editor_dialog import RoiEditorDialog
 from sproutly.ui.settings_dialog import SettingsDialog
 from sproutly.ui.stats_window import StatsWindow
 from sproutly.ui.update_dialog import UpdateDialog
@@ -95,6 +97,11 @@ class MainWindow(QMainWindow):
         history_action.setShortcut("Ctrl+H")
         history_action.triggered.connect(self.show_history)
         file_menu.addAction(history_action)
+
+        roi_action = QAction("ROI 편집...", self)
+        roi_action.setShortcut("Ctrl+Shift+E")
+        roi_action.triggered.connect(self.open_roi_editor)
+        file_menu.addAction(roi_action)
 
         stats_action = QAction("통계...", self)
         stats_action.setShortcut("Ctrl+T")
@@ -332,3 +339,25 @@ class MainWindow(QMainWindow):
                           f"<p>성과 기록 도구</p>"
                           f"<p><a href='https://github.com/sbkong/sproutly'>GitHub</a></p>"
                           )
+
+    def open_roi_editor(self):
+        if not self.current_image_path:
+            QMessageBox.information(
+                self, "알림",
+                "먼저 이미지를 로드하거나 캡처하세요.\n"
+                "(현재 표시된 이미지를 기준으로 ROI를 편집합니다)",
+            )
+            return
+
+        dlg = RoiEditorDialog(
+            image_path=self.current_image_path,
+            engine=self.engine,
+            parent=self,
+        )
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            self.engine.reload_rois()
+            try:
+                self.drop_area.set_rois(load_active_rois())
+            except AttributeError:
+                pass
+            self.statusBar().showMessage("ROI 설정이 저장되었습니다")

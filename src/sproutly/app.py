@@ -2,6 +2,7 @@ import os
 import sys
 
 from . import logger as app_logger
+from sproutly.resources_util import resource_path
 
 log = app_logger.setup_logging()
 

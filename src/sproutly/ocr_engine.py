@@ -8,19 +8,7 @@ import numpy as np
 from paddleocr import PaddleOCR
 
 from sproutly.paths import CROPS_DIR
-
-ROIS = [
-    ("buttons", 40, 0, 270, 110),
-    ("title", 770, 0, 1400, 50),
-    ("break_top", 1080, 165, 1165, 235),
-    ("judgement", 90, 230, 435, 640),
-    ("max_100", 610, 350, 720, 415),
-    ("max_1_90", 1180, 340, 1310, 415),
-    ("score", 720, 710, 1150, 800),
-    ("score_grown", 830, 800, 1050, 840),
-    ("judgement_total", 880, 600, 1040, 640),
-    ("judgement_total_grown", 880, 640, 1040, 670),
-]
+from sproutly.rois import load_active_rois
 
 
 def to_int(s: str) -> int:
@@ -70,10 +58,7 @@ class OcrEngine:
         self._ocr = None
         self.score_thresh = score_thresh
         self.red_arrow_ratio = red_arrow_ratio
-
-    def update_thresholds(self, score_thresh: float, red_arrow_ratio: float):
-        self.score_thresh = score_thresh
-        self.red_arrow_ratio = red_arrow_ratio
+        self._rois = load_active_rois()
 
     def _ensure_loaded(self):
         if self._ocr is None:
@@ -85,40 +70,62 @@ class OcrEngine:
                 use_textline_orientation=False,
             )
 
-    def extract(self, image_path: str) -> dict:
+    def reload_rois(self):
+        self._rois = load_active_rois()
+
+    def extract(self, image_path: str, override_rois=None) -> dict:
         self._ensure_loaded()
+
+        rois = override_rois if override_rois is not None else self._rois
 
         img = Image.open(image_path)
         raw = {}
         crops = {}
+        CROPS_DIR.mkdir(exist_ok=True)
 
-        # 임시 crop 저장 폴더
-        tmp_dir = CROPS_DIR
-        tmp_dir.mkdir(exist_ok=True)
-
-        for name, x1, y1, x2, y2 in ROIS:
-            crop = img.crop((x1, y1, x2, y2))
-            crop_path = str(tmp_dir / f'{name}.png')
+        for roi in rois:
+            crop = img.crop((roi.x1, roi.y1, roi.x2, roi.y2))
+            crop_path = str(CROPS_DIR / f'{roi.name}.png')
             crop.save(crop_path)
-            crops[name] = crop
+            crops[roi.name] = crop
 
             result = self._ocr.predict(crop_path)
             texts = result[0]['rec_texts']
             scores = result[0]['rec_scores']
             filtered = [t for t, s in zip(texts, scores) if s >= self.score_thresh]
-            raw[name] = filtered
+            raw[roi.name] = filtered
 
         record = {
-            'title': raw['title'][0] if raw['title'] else '',
-            'buttons': to_int(raw['buttons'][0]) if raw['buttons'] else 0,
-            'score': to_int(raw['score'][0]) if raw['score'] else 0,
-            'accuracy': raw['judgement_total'][0] if raw['judgement_total'] else '',
-            'max_100_count': to_int(raw['max_100'][0]) if raw['max_100'] else 0,
-            'max_1_90_count': to_int(raw['max_1_90'][0]) if raw['max_1_90'] else 0,
-            'break_count': to_int(raw['break_top'][0]) if raw['break_top'] else 0,
-            'judgement': parse_judgement(raw['judgement']),
-            'is_score_grown': has_red_arrow(crops['score_grown'], self.red_arrow_ratio),
-            'is_accuracy_grown': has_red_arrow(crops['judgement_total_grown'], self.red_arrow_ratio),
+            'title': raw.get('title', [''])[0] if raw.get('title') else '',
+            'buttons': to_int(raw.get('buttons', ['0'])[0]) if raw.get('buttons') else 0,
+            'score': to_int(raw.get('score', ['0'])[0]) if raw.get('score') else 0,
+            'accuracy': raw.get('judgement_total', [''])[0] if raw.get('judgement_total') else '',
+            'max_100_count': to_int(raw.get('max_100', ['0'])[0]) if raw.get('max_100') else 0,
+            'max_1_90_count': to_int(raw.get('max_1_90', ['0'])[0]) if raw.get('max_1_90') else 0,
+            'break_count': to_int(raw.get('break_top', ['0'])[0]) if raw.get('break_top') else 0,
+            'judgement': parse_judgement(raw.get('judgement', [])),
+            'is_score_grown': has_red_arrow(crops['score_grown'],
+                                            self.red_arrow_ratio) if 'score_grown' in crops else False,
+            'is_accuracy_grown': has_red_arrow(crops['judgement_total_grown'],
+                                               self.red_arrow_ratio) if 'judgement_total_grown' in crops else False,
         }
-
         return record
+
+    def extract_raw(self, image_path: str, rois) -> dict:
+        self._ensure_loaded()
+
+        img = Image.open(image_path)
+        raw = {}
+        CROPS_DIR.mkdir(exist_ok=True)
+
+        for roi in rois:
+            crop = img.crop((roi.x1, roi.y1, roi.x2, roi.y2))
+            crop_path = str(CROPS_DIR / f'_test_{roi.name}.png')
+            crop.save(crop_path)
+            result = self._ocr.predict(crop_path)
+            texts = result[0]['rec_texts']
+            scores = result[0]['rec_scores']
+            filtered = [t for t, s in zip(texts, scores) if s >= self.score_thresh]
+            raw[roi.name] = filtered
+
+        return raw

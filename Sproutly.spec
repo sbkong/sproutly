@@ -37,6 +37,15 @@ extra_hidden = [
     'sproutly', 'sproutly.ui',
 ]
 
+import os
+sproutly_resources = []
+src_resources = os.path.join('src', 'sproutly', 'resources')
+if os.path.isdir(src_resources):
+    for f in os.listdir(src_resources):
+        full = os.path.join(src_resources, f)
+        if os.path.isfile(full):
+            sproutly_resources.append((full, 'sproutly/resources'))
+
 a = Analysis(
     ['run_sproutly.py'],
     pathex=['src'],
@@ -44,6 +53,7 @@ a = Analysis(
     datas=(
         paddle_datas + paddleocr_datas + paddlex_datas
         + sproutly_datas + extra_metadata
+        + sproutly_resources
     ),
     hiddenimports=(
         paddle_hidden + paddleocr_hidden + paddlex_hidden
